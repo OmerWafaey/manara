@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Manara per-project state is created INSIDE target projects, never here.
+# (kept out of the skill repo on principle; this line documents the boundary)
+.manara/
+
+# Build spec is an input artifact, not part of the shipped skill
+MANARA_BUILD_SPEC.md
+
+# Local, machine-specific Claude Code settings (never ship)
+.claude/settings.local.json
