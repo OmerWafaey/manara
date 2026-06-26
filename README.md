@@ -1,163 +1,138 @@
 # Manara 🗼
 
-**One orchestrator skill for Claude Code: describe a task in plain language, and Manara decides
-the stage, routes to the right skills, keeps the guards blocking, writes a report — and remembers
-where you are across context clears so a fresh session resumes instead of restarting.**
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.7+](https://img.shields.io/badge/Python-3.7%2B-blue.svg)](https://www.python.org/)
+[![Built for Claude Code](https://img.shields.io/badge/Built%20for-Claude%20Code-d97757.svg)](https://claude.com/claude-code)
 
-*Manara* (مَنارة) means **lighthouse**: it tells you where you are on the path and lights the next step.
+*Manara* (مَنارة) means **lighthouse** — something that tells you where you are and lights the next step.
 
 ---
 
-## The problem it solves
+## What this is, in plain terms
 
-Two everyday pains with a big skill catalog:
+Manara is a helper for [Claude Code](https://claude.com/claude-code) that **keeps your project on track**.
 
-1. **You have to remember which skill to run.** Was this a `to-prd` moment? Should `clean-code-guard`
-   fire now or after tests? Manara makes that call for you and tells you *why*.
-2. **You lose context on every clear.** Long builds get summarized or cleared, and the next session
-   starts over. Manara persists progress to a per-project `.manara/` folder, so a fresh session reads
-   where you were and continues from there.
+You talk to it in normal language — *"build the login page,"* *"fix this bug,"* *"review my changes"* — and Manara figures out what to do next, runs the right tools in the right order, and **remembers where you left off** so you can pick up later without starting over.
 
-`/manara` is the **single entry point**. It reads state, decides the stage, and *invokes* your
-existing skills — it does not absorb or rewrite them. It's a coordinator over your catalog, not a
-monolith.
+### Why it helps
+
+Working on a real project with Claude Code, two things tend to go wrong:
+
+1. **You have to remember which tool to run, and when.** Should you write the spec first? Run the code reviewer now, or after the tests? Manara makes that call for you — and always tells you *why*.
+2. **Long sessions lose their memory.** When a chat gets cleared or summarized, the next session forgets what you were doing and starts from scratch. Manara writes your progress to a small file inside your project, so a fresh session reads it and **continues where you were**.
+
+Think of it as one front door (`/manara`) that quietly coordinates the tools you already have — it doesn't replace them, it just makes sure the right one runs at the right moment.
 
 ---
 
 ## Install
 
-Manara lives in your **user-level** skills directory, so Claude Code finds it in **every** project:
+### Easy way (recommended)
 
-```
-# clone (or copy) into your user skills folder
-git clone <repo-url> ~/.claude/skills/manara
-```
+Run one command. It downloads Manara into the right folder for you, and you can re-run it anytime to update.
 
-On **Windows** that path is:
-
-```
-C:\Users\<you>\.claude\skills\manara\
+**macOS / Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/OmerWafaey/manara/main/install.sh | bash
 ```
 
-Source = install location = one place. Once it's there, just `cd` into any project and run `/manara`.
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/OmerWafaey/manara/main/install.ps1 | iex
+```
 
-**Requirements:** Python 3 for the state/guard scripts. No other runtime — the scripts use only the
-standard library (`pathlib`, `json`, `argparse`).
+That's it — Manara installs to `~/.claude/skills/manara` so Claude Code finds it in **every** project.
 
-> **Windows install note — use `py -3`, not `python`.**
-> On a default Windows setup, typing `python` or `python3` opens the Microsoft Store stub
-> ("Python was not found; run without arguments to install from the Microsoft Store…") instead of
-> running Python — even when Python is installed. Manara therefore invokes its scripts through the
-> **`py -3`** launcher, which resolves the real interpreter. Two things to know:
-> - Run the scripts as `py -3 "...\scripts\state.py" ...` (this is what `SKILL.md` does).
-> - The `py -3` form also sidesteps a related gotcha: `py` alone honors a script's
->   `#!/usr/bin/env python3` shebang and re-resolves to the same Store stub; `-3` forces the real
->   Python 3 regardless. If `py -3 --version` prints a version, you're set.
->
-> macOS/Linux users can use `python3` directly.
+### Manual way (fallback)
+
+Manara is a Claude Code **skill**, not an npm package — `npm install` won't put it in the right place. To install by hand, just clone it into your user-skills folder:
+
+```bash
+git clone https://github.com/OmerWafaey/manara.git ~/.claude/skills/manara
+```
+
+On **Windows** that folder is `C:\Users\<you>\.claude\skills\manara\`.
+
+**Requirements:** Python 3.7 or newer (for the small state/progress scripts). Nothing else to install — the scripts use only Python's built-in library.
+
+> **Windows tip — use `py -3`, not `python`.**
+> On a fresh Windows setup, typing `python` often opens the Microsoft Store instead of running Python. Manara avoids this by calling its scripts through the **`py -3`** launcher, which always finds the real Python 3. If `py -3 --version` prints a version number, you're good. (macOS/Linux users can use `python3` directly.)
 
 ---
 
-## Dependencies — layered, so nobody faces a long install list
+## ⚠️ Important: run `/manara` from inside your project folder
 
-### Required — the guard skills Manara routes to
-These are the gates Manara keeps **blocking**. Install the ones for your work:
-- `clean-code-guard` — production-code review (the canonical code gate)
-- `test-guard` — test-code review
-- `diagnosing-bugs` — the bug/perf diagnosis loop
-- `to-prd`, `to-issues` — PRD + issue breakdown
-- `grill-with-docs` — idea validation interview
-- *(by stack)* `wp-guard` / `woo-guard`, and `docs-guard` for documented changes
+> **Always run `/manara` from inside your project folder.** Manara reads the *current directory* to find your saved `.manara/` progress file. If you run it from the skills folder — or anywhere that isn't your project — it can't find your state, and it won't be able to resume.
 
-If a routed skill is missing, Manara **detects and suggests** it — it never silently skips a guard.
+This is the single most common mistake, and the fix is simple:
 
-### Optional — Spec Kit
-Used only at the Specification stage, for large/complex work. **If it isn't installed, Manara skips
-that stage and says so.** Never forced. (See the Spec Kit section below — read it before first use.)
-
-### Self-bootstrapping (roadmap, v2)
-When a needed skill is missing, Manara will be able to **offer** to generate it via `skill-creator`.
-**In v1 it only detects and suggests — it does not auto-generate.**
-
----
-
-## Spec Kit — read this before first use
-
-Spec Kit (the `specify` CLI) is **optional** and lives in **its own territory**. The most common
-setup mistake is running it in the wrong place — so the rule is simple and absolute:
-
-> **Manara runs `specify init` *inside the target project*, when a formal spec is warranted —
-> NEVER inside Manara's own skill folder.** And Manara **never writes into Spec Kit's own folders**
-> (e.g. `specs/`); it may *decide to invoke* Spec Kit, but it does not manage Spec Kit's files.
-
-Three locations stay distinct, and Spec Kit only ever touches the project's:
-
-| Location | What it is | Manara's relationship |
-|----------|-----------|----------------------|
-| `~/.claude/skills/manara/` | Manara's source **and** install location | Manara's own folder — Spec Kit never runs here |
-| `<project>/.manara/` | Per-project Manara state (resume file) | Manara reads/writes this, via its scripts only |
-| `<project>/specs/` (Spec Kit) | Spec Kit's own output | Manara *invokes* `specify`, never writes here |
-
-If Spec Kit isn't installed or isn't wanted, Manara skips the Specification stage and notes the skip
-in its report. It is never a hard dependency.
-
----
-
-## Usage — one end-to-end example (SnapClean)
-
-```
-cd path/to/SnapClean          # the target project
-/manara                       # single entry point
-> "build the SnapClean MVP — blur and redact sensitive info in screenshots before sharing"
+```bash
+cd <your-project>     # the folder you're actually building
+/manara               # now Manara can read and resume your progress
 ```
 
-What Manara does, out loud and inspectable:
+---
 
-1. **Cold-start check.** No `.manara/` yet → initializes one from the template. (On a later run it
-   would instead read `.manara/session.md` and say *"We're at stage X, last decision Y, next Z —
-   continue?"* instead of starting over.)
-2. **Profile.** *"Looks like a small project — light path, fewer gates (guards still blocking). OK?"*
-   You confirm → persisted to `state.json`.
-3. **Stage decision.** Intent = `build-mvp`, small profile → enters at **Implementation**, skipping
-   upstream gates. It states the decision **and the reason**.
-4. **Routing.** Invokes `tdd` to build the slice test-first, then runs the blocking guards —
-   `clean-code-guard` then `test-guard` — through `run_guards.py` (cap 3; a fail blocks and surfaces).
-5. **Persist after each step.** `state.json` + `session.md` updated throughout, so a context clear
-   mid-build is safe.
-6. **Report.** *What ran, what was skipped and why* (e.g. "skipped Spec Kit: small profile"), guard
-   results, and where you are now.
+## How to use it
 
-Clear the context, run `/manara` again in the same folder, and it resumes from the saved state.
+Open your project in Claude Code and run `/manara`. Here's a typical first run:
+
+```bash
+cd <your-project>
+/manara
+> "build the MVP — a tool that blurs sensitive info in screenshots before sharing"
+```
+
+Manara then works out loud, so you can see every decision:
+
+1. **First run?** It sets up a fresh `.manara/` progress file for this project. (Next time, it instead reads that file and says *"We're at this stage, last we did X, next is Y — keep going?"*)
+2. **Sizing up the work.** *"This looks like a small project — I'll take the light path with fewer checkpoints, but the quality checks still run. Sound good?"* You confirm.
+3. **Deciding the next step** — and explaining the reasoning, not just the action.
+4. **Running the right tools** — for example, building a feature test-first, then running the code and test reviewers before moving on. A failed quality check **stops and tells you**, rather than slipping through.
+5. **Saving progress as it goes**, so a cleared chat mid-build is never a problem.
+6. **A short report** — what ran, what it skipped and why, and where you are now.
+
+Clear the chat, run `/manara` again in the same folder, and it picks right back up.
+
+### The quality checks always run
+
+Manara leans on a set of "guard" tools — code review, test review, and so on. You can hint *which* one runs, but **you can't switch a guard off**. That's on purpose: it's what keeps quality from quietly slipping. If a guard you need isn't installed, Manara points it out instead of silently skipping it.
 
 ---
 
-## What Manara does *not* do in v1
+## A note on Spec Kit (optional)
 
-- **Manual mode only** — it stops and checks in at every decision. No semi-auto or full-auto.
-- **Single terminal** — no multi-terminal/worktree coordination.
-- **Seed memory only** — just enough state to resume, not a full memory system.
-- **Guards always blocking** — a user hint can pick *which* skill runs, but never disables a guard.
+For larger, more complex projects, Manara can use [Spec Kit](https://github.com/github/spec-kit) (the `specify` tool) to write a formal spec first. This is **optional** — if you don't have it installed, Manara simply skips that step and tells you it did.
+
+One rule worth knowing: Spec Kit always runs **inside your project**, never inside Manara's own folder. Three folders stay separate and never get mixed up:
+
+| Folder | What it holds |
+|--------|---------------|
+| `~/.claude/skills/manara/` | Manara itself (you install it here, once) |
+| `<your-project>/.manara/` | Your saved progress for that project |
+| `<your-project>/specs/` | Spec Kit's output, if you use it |
+
+---
+
+## What Manara doesn't do (yet)
+
+This is **v1**, intentionally small and careful:
+
+- **It always checks in with you** before each decision — no silent auto-pilot.
+- **One terminal at a time** — no coordinating parallel sessions.
+- **Just enough memory to resume** — not a full long-term memory yet.
+- **Quality checks can't be turned off** — a hint can pick *which* one runs, never whether it runs.
 
 ---
 
 ## Roadmap
 
-### v2
-Decision Engine proper (deep-research / architecture / prototype / MVP / refactor / tests decision
-points); semi-auto and full-auto modes; review gates; a Spec Kit adapter (run/skip); skill
-auto-generation via `skill-creator`; an override log that feeds learning.
+**v2** — a smarter decision engine (when to research vs. prototype vs. refactor), optional semi-automatic and fully-automatic modes, review checkpoints, a proper on/off adapter for Spec Kit, and the ability to generate a missing tool on the spot.
 
-### v3
-Full project memory (brand, design system, target users, competitors, risks, architecture);
-multi-project awareness; multi-terminal coordination via git worktrees (one terminal = one worktree
-= one claimed issue; merge is always a gate, and **guards re-run on the merged result**);
-cross-session / cross-project handoffs (reusing the `handoff` skill); per-project-type templates
-(SaaS, Extension, Mobile, API); a Codex delegate (Codex executes, but guards still run on its output
-before anything is accepted; self-modification only ever happens **after** the report and **with user
-approval**, never mid-task).
+**v3** — real long-term project memory (your product, design system, users, competitors, architecture), awareness across multiple projects, coordinating several terminals at once, handoffs between sessions, ready-made templates per project type (SaaS, browser extension, mobile, API), and the option to delegate work to other coding agents — with the quality checks still running on whatever they produce.
 
 ---
 
 ## License
 
-MIT (placeholder — confirm before publishing).
+[MIT](LICENSE) © 2026 Omar Wafaey
