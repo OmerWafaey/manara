@@ -31,12 +31,14 @@ Think of it as one front door (`/manara`) that quietly coordinates the tools you
 
 Run one command. It downloads Manara into the right folder for you, and you can re-run it anytime to update.
 
-**macOS / Linux:**
+#### macOS / Linux
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/OmerWafaey/manara/main/install.sh | bash
 ```
 
-**Windows (PowerShell):**
+#### Windows (PowerShell)
+
 ```powershell
 irm https://raw.githubusercontent.com/OmerWafaey/manara/main/install.ps1 | iex
 ```
