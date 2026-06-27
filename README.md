@@ -100,6 +100,16 @@ Clear the chat, run `/manara` again in the same folder, and it picks right back 
 
 Manara leans on a set of "guard" tools — code review, test review, and so on. You can hint *which* one runs, but **you can't switch a guard off**. That's on purpose: it's what keeps quality from quietly slipping. If a guard you need isn't installed, Manara points it out instead of silently skipping it.
 
+### Automatic checkpoints (one slice = one safe point to roll back to)
+
+Once a piece of work passes its quality checks **and you've confirmed it's right**, Manara offers to commit it for you — so there's always a clean point to roll back to if the next change goes sideways. It's deliberately cautious:
+
+- **Both gates required.** A commit happens only after the guards pass *and* you explicitly verify the work. Green checks alone are never enough — you're the final say.
+- **You see it before it happens.** Manara shows you the exact files it will commit and the proposed message, and commits only after you confirm.
+- **Local only — never pushed.** Pushing to GitHub (or any remote) stays your manual action.
+- **Your progress file is never committed.** Manara's own `.manara/` folder is always left out, and your existing `.gitignore` is respected.
+- **No surprises on a fresh project.** If the folder isn't a git repo yet, Manara *asks* before initializing one — it never does it silently.
+
 ---
 
 ## A note on Spec Kit (optional)
@@ -118,7 +128,7 @@ One rule worth knowing: Spec Kit always runs **inside your project**, never insi
 
 ## What Manara doesn't do (yet)
 
-This is **v1**, intentionally small and careful:
+The core is still **v1**, intentionally small and careful (v2 is adding capabilities one verified slice at a time — see the roadmap):
 
 - **It always checks in with you** before each decision — no silent auto-pilot.
 - **One terminal at a time** — no coordinating parallel sessions.
@@ -129,7 +139,7 @@ This is **v1**, intentionally small and careful:
 
 ## Roadmap
 
-**v2** — a smarter decision engine (when to research vs. prototype vs. refactor), optional semi-automatic and fully-automatic modes, review checkpoints, a proper on/off adapter for Spec Kit, and the ability to generate a missing tool on the spot.
+**v2 (in progress)** — shipping one careful slice at a time. **Done:** automatic checkpoints — a local commit after each verified slice (see [Automatic checkpoints](#automatic-checkpoints-one-slice--one-safe-point-to-roll-back-to) above). **Next:** a smarter decision engine (when to research vs. prototype vs. refactor), optional semi-automatic and fully-automatic modes, review checkpoints, a proper on/off adapter for Spec Kit, and the ability to generate a missing tool on the spot.
 
 **v3** — real long-term project memory (your product, design system, users, competitors, architecture), awareness across multiple projects, coordinating several terminals at once, handoffs between sessions, ready-made templates per project type (SaaS, browser extension, mobile, API), and the option to delegate work to other coding agents — with the quality checks still running on whatever they produce.
 
