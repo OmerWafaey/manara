@@ -18,8 +18,9 @@ you call them. You do **not** manage state in your head — the scripts own it.
 
 **Brain vs. plumbing (never violate):**
 - *Brain* = this file. All judgment (which stage, which profile, whether to delegate) is yours.
-- *Plumbing* = `scripts/*.py`. All mechanical state/guard bookkeeping. **Call** the scripts;
-  never re-implement their logic or hand-edit `.manara/` files.
+- *Plumbing* = `scripts/*.py`. All mechanical state/guard/git bookkeeping. **Call** the scripts;
+  never re-implement their logic or hand-edit `.manara/` files. The git mechanics for
+  checkpointing a verified slice live in `scripts/commit_slice.py` (see Step 5b).
 
 **Invoking the scripts (Windows).** Use the `py -3` launcher, from the skill folder:
 `py -3 "C:\Users\Omar\.claude\skills\manara\scripts\state.py" <cmd> --project "<PROJECT_ROOT>"`.
@@ -125,6 +126,54 @@ py -3 "<SKILL>/scripts/state.py" update --project "<PROJECT_ROOT>" \
   --done "<what just finished>" --next "<next step>" --next "<and the one after>"
 ```
 `state.py` rewrites both `state.json` and `session.md` — keep going through the script only.
+
+---
+
+## Step 5b — Auto-commit a verified slice (one slice = one rollback point)
+
+The lesson behind this: a long stretch with **zero commits** means a broken slice has no
+clean point to roll back to. So after a slice is *both* guard-clean and human-approved,
+checkpoint it with a local commit. The git mechanics are plumbing — call
+`scripts/commit_slice.py`; never run raw `git add/commit` from the brain.
+
+**Trigger — BOTH must be true (never one alone):**
+1. The slice's blocking guards **passed** (Step 4 loop ended in `continue`, not `escalate`), AND
+2. The user **explicitly verified/approved** the slice ("verified", "looks right", "commit it").
+
+Green guards ≠ correct — the human is the final gate. Never commit on guards alone, and never
+commit work the user hasn't approved.
+
+**The flow:**
+
+1. Check the repo state (read-only — stages nothing):
+   ```
+   py -3 "<SKILL>/scripts/commit_slice.py" check --project "<PROJECT_ROOT>"
+   ```
+   - **`is_git_repo: false`** → do **NOT** init silently. Ask the user:
+     > "This project has no git repo yet — want me to initialize one so I can checkpoint your work?"
+     Only on approval:
+     ```
+     py -3 "<SKILL>/scripts/commit_slice.py" init-repo --project "<PROJECT_ROOT>"
+     ```
+   - **`nothing_to_commit: true`** → tell the user there's nothing to checkpoint; stop.
+   - Otherwise you now have the `files` list (with `.manara/` already excluded).
+
+2. **Write the commit message** from the slice context — a short, plain-language summary
+   including the slice name/intent. Example: `Slice A — blur strength (blur-only)`.
+
+3. **Show before committing.** Present the user the staged **file list** (from `check`) and the
+   **proposed commit message**. Commit only after they confirm.
+
+4. On confirmation, make the local commit:
+   ```
+   py -3 "<SKILL>/scripts/commit_slice.py" commit --project "<PROJECT_ROOT>" \
+     --message "Slice A — blur strength (blur-only)"
+   ```
+   The script stages source only (`.manara/` excluded, `.gitignore` respected) and creates a
+   **local** commit. **Do NOT auto-push** — pushing to a remote stays a manual action the user
+   performs themselves. No squash/rebase/history rewrite — just clean forward commits.
+
+Then continue (persist via Step 5; the next slice starts from this checkpoint).
 
 ---
 
