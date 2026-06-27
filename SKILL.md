@@ -99,12 +99,61 @@ why before you call it.
 
 ---
 
+## Step 3b — Behavior spec before code (sensitive slices only)
+
+The lesson behind this: SnapClean's worst bug — a privacy leak where "solid" redaction
+turned translucent and the hidden content showed through — happened because the tests
+encoded a **wrong assumption** about correct behavior. Guards passed, tests were green,
+the product still leaked. **Clean code that does the wrong thing is still wrong.** So on a
+sensitive slice, state the invariants in plain language and get them confirmed *before*
+writing tests or code — that is the moment to catch a wrong invariant before it becomes a test.
+
+**When this applies — a judgment call, not a gate on every change:**
+- **Applies** to: redaction/privacy logic, anything touching security or data safety,
+  state/history mutation, anything where "looks clean but does the wrong thing" is a real
+  risk, or any slice the user flags as sensitive.
+- **Skip** for: trivial UI tweaks (a label, a color, a tooltip), pure refactors with no
+  behavior change, or wiring with no logic. Forcing a spec on these is friction, not safety —
+  proceed normally.
+- **When unsure**, briefly ask: *"this one looks sensitive — want a behavior spec first?"*
+  rather than guessing.
+
+**The procedure (do this BEFORE invoking TDD or writing any code):**
+
+1. **Read the relevant existing code first**, so the spec fits reality, not assumptions.
+
+2. **Write a short behavior spec in plain language**, containing:
+   - The **invariants** the slice must preserve (the things that must stay true no matter what).
+   - What the slice **will** and **won't** do.
+
+3. **MANDATORY for ANY redaction/privacy slice** — always state these safety invariants
+   explicitly; never rely on remembering them, because this is the exact class of bug that
+   caused the leak:
+   - **Redaction fully hides content — never partially transparent.**
+   - **Coverage is hard-edged** (a pixel is in or out; no soft/feathered leak at the boundary).
+   - **Already-committed work is immutable** — never silently changed by a later control or action.
+
+4. **Get explicit user confirmation of the spec** before writing any test or code. The user can
+   correct an invariant that's wrong; **incorporate the correction before coding.**
+
+5. **Then** proceed to the implementation (Step 4 → route to TDD): the tests must assert the
+   confirmed invariants, so green tests actually mean correct behavior.
+
+This is **brain**, not plumbing — no script. It does not change the Step 5b auto-commit flow,
+and it sits inside the normal v1 stage/guard flow (it gates *entry* to implementation on a
+sensitive slice; guards still run and still block afterward).
+
+---
+
 ## Step 4 — Hint vs. delegate (user control)
 
 - **User named a skill** ("use clean-code-guard"): treat it as a **hint** — confirm it actually
   fits the stage, then honor it.
 - **User named nothing**: decide stage + skills autonomously and proceed.
 - **In all cases, guards stay blocking.** A user hint never disables a guard.
+
+On a **sensitive** slice, do not enter implementation until Step 3b's behavior spec is
+written and user-confirmed — the confirmed invariants are what the tests must encode.
 
 When a stage produces work that a guard covers, run the guard loop:
 1. `py -3 "<SKILL>/scripts/run_guards.py" should-run --project "<PROJECT_ROOT>" --guard <name>`
