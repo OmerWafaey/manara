@@ -89,6 +89,59 @@ py -3 "<SKILL>/scripts/state.py" update --project "<PROJECT_ROOT>" \
 
 ---
 
+## Step 2b — Single-slice enforcement (no bundling)
+
+The lesson behind this: SnapClean's worst day came from **bundling** — shapes and a shared
+strength control were built together, they coupled, and the coupling caused the privacy leak.
+Every later patch broke something else. What turned it around was strict **one-slice-at-a-time**
+work with a commit between each. Manara enforces this instead of relying on the user (or the
+model) to remember it — because the natural instinct is to say "let's do X *and* Y" in one go.
+
+So **before routing to implementation**, check whether the request bundles more than one
+independent piece of work. If it does, do **not** start building — stop and ask which single
+slice to start with.
+
+**Detect the bundle — a judgment call, not a keyword rule:**
+- **Bundle** (split it): two or more pieces that are each *independently testable and
+  committable* — distinct capabilities or behaviors that each deserve their own verify + commit.
+  E.g. "add live-paint **and** a size slider", "fix the bug **and** add the new mode",
+  "do shapes **and** strength".
+- **NOT a bundle** (proceed): a single coherent piece with natural sub-parts — one testable
+  behavior, even if it has parts (a commit plus its message; a function plus its test).
+- When genuinely unsure, **lean toward asking** rather than assuming it's fine.
+
+**The procedure (do this BEFORE Step 3 routing):**
+
+1. **Stop and ask — wait for the user's choice.** List the slices you see and ask which **ONE**
+   to start with. Do **not** auto-pick the order — the user decides what matters most. Example:
+   *"That's two slices: (1) brush paints live, (2) brush size control. Which should I start with?
+   I'll record the other in the plan."*
+
+2. **Record the rest in the plan** so the unchosen slices aren't lost — use the existing state
+   queue (the `--next` list), not a new mechanism:
+   ```
+   py -3 "<SKILL>/scripts/state.py" update --project "<PROJECT_ROOT>" \
+     --next "slice: <chosen one> (building now)" \
+     --next "slice: <unchosen> (queued — one at a time, verify+commit before next)"
+   ```
+   Queued slices are picked up **one at a time**, each verified + committed (Step 5b) before the
+   next begins.
+
+3. **Then proceed with only the chosen slice** through the normal flow — Step 3 routing →
+   Step 3b behavior-spec if sensitive → TDD → guards (Step 4 loop) → verify → Step 5b auto-commit.
+
+**Boundaries (keep this slice honest):**
+- Don't auto-split and silently start — **always ASK** which slice first.
+- It's **not** a rigid "contains the word *and*" rule — it's about whether the pieces are
+  independently testable/committable.
+- Don't force a split on a single coherent slice that merely has sub-parts.
+
+This is **brain**, not plumbing — no new script; it only uses the existing `state.py` queue. It
+does not change Slice 1 (Step 5b auto-commit) or Slice 2 (Step 3b behavior-spec), and it sits
+inside the normal v1 stage/guard flow — it gates *entry* to routing when a request bundles work.
+
+---
+
 ## Step 3 — Routing (replace auto-triggering; don't duplicate it)
 
 Based on the stage, **explicitly invoke** the appropriate existing skill(s) via the Skill tool,
