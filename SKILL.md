@@ -231,6 +231,60 @@ py -3 "<SKILL>/scripts/state.py" update --project "<PROJECT_ROOT>" \
 
 ---
 
+## Step 5a — UX verification checklist (UI slices only — guides review, doesn't gate)
+
+The lesson behind this: the code guards (clean-code-guard, test-guard) check code *quality* —
+they **cannot** catch visual or interactive defects. A rectangle that drags stiffly, a square
+that sizes wrong, a "solid" redaction that leaks, a preview that doesn't match the commit —
+throughout SnapClean those were caught ONLY by a human looking in a real browser, and several
+nearly slipped past because nothing prompted a *structured* check; the review was ad-hoc
+"eyeball it and hope." So on a UI slice, **before** the Step 5b verify/commit, present a short
+checklist of slice-specific things to verify in the browser. This **guides** the human review;
+it never replaces it. UX cannot be auto-judged — the human eye stays the final gate.
+
+**When this applies — a judgment call, like Step 3b:**
+- **Applies** to slices with a **visual/interactive surface** (UI): redaction/preview, drag/shape,
+  a control/slider, layout, anything the user sees or manipulates.
+- **Skip** for non-visual slices — pure logic, refactors, wiring, config. A checklist there is
+  noise, not safety; proceed straight to Step 5b.
+- When genuinely unsure whether a slice has a meaningful visual surface, lean toward presenting a
+  short checklist rather than skipping.
+
+**The procedure (do this BEFORE Step 5b, after the slice is built and guards are clean):**
+
+1. **Generate the checklist from what the slice actually touched** — adaptive, not a fixed list
+   bolted onto every slice. Name the things most likely to break *for this specific slice*.
+   Guidance by kind (examples, not an exhaustive menu):
+   - **Redaction/privacy slice** → "zoom in and confirm content is fully hidden (no leak); the
+     edge is hard with no faint halo; the fill covers exactly what the preview showed."
+   - **Drag/shape slice** → "drag in every direction; the shape tracks the cursor smoothly; the
+     committed result matches the preview exactly (no stray pixels)."
+   - **Control/slider slice** → "the default value looks unchanged from before; the control's
+     effect is visible; committed work doesn't change when you move it afterward."
+   - **Plus, for ANY UI slice:** "previously committed work is unchanged."
+
+2. **Present it as a suggestion and ask the user to review in the browser.** Show the few items
+   and invite the user to verify them. Do **not** turn it into a mandatory tick-box and do **not**
+   require ticking each item — a forced tick-gate invites mechanical "yes" answers without really
+   looking, which is worse than guiding.
+
+3. **Then proceed to the normal Step 5b verify+commit, unchanged.** The checklist guides the
+   verification the user already does; it does **not** add a second mandatory gate. Step 5b's
+   trigger is still exactly "blocking guards passed AND the user explicitly verified/approved."
+
+**Boundaries (keep this slice honest):**
+- It's a **suggestion that guides review**, never a hard gate — don't block the commit on ticking items.
+- Don't replace human review with an auto-pass — Manara cannot judge UX itself.
+- Adaptive to what the slice touched, not a rigid fixed list on every slice.
+- No checklist on non-UI slices (no noise).
+- Don't change Slice 1 (Step 5b auto-commit), Slice 2 (Step 3b behavior-spec), or Slice 3
+  (Step 2b single-slice) behavior.
+
+This is **brain**, not plumbing — no new script. It sits just before the Step 5b verify/commit on
+UI slices and leaves that commit trigger untouched.
+
+---
+
 ## Step 5b — Auto-commit a verified slice (one slice = one rollback point)
 
 The lesson behind this: a long stretch with **zero commits** means a broken slice has no

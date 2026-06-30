@@ -146,6 +146,7 @@ The core is still **v1**, intentionally small and careful (v2 is adding capabili
 - ✅ **Automatic checkpoints** — a local commit after each verified slice (see [Automatic checkpoints](#automatic-checkpoints-one-slice--one-safe-point-to-roll-back-to) above).
 - ✅ **Behavior-spec before code (Step 3b)** — for sensitive slices, Manara writes down the expected behavior *first*, so there's a clear target to build and check against.
 - ✅ **One slice at a time (no bundling)** — Manara works through a single slice end-to-end before starting the next, instead of lumping several changes together.
+- ✅ **UX verification checklist (Step 5a)** — after a UI slice, Manara presents a short, slice-specific list of things to eyeball in the browser before you verify and commit. Guides review; never replaces it.
 
 **Next:**
 
