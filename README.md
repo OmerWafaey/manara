@@ -139,7 +139,20 @@ The core is still **v1**, intentionally small and careful (v2 is adding capabili
 
 ## Roadmap
 
-**v2 (in progress)** — shipping one careful slice at a time. **Done:** automatic checkpoints — a local commit after each verified slice (see [Automatic checkpoints](#automatic-checkpoints-one-slice--one-safe-point-to-roll-back-to) above). **Next:** a smarter decision engine (when to research vs. prototype vs. refactor), optional semi-automatic and fully-automatic modes, review checkpoints, a proper on/off adapter for Spec Kit, and the ability to generate a missing tool on the spot.
+**v2 (in progress)** — shipping one careful slice at a time.
+
+**Done so far:**
+
+- ✅ **Automatic checkpoints** — a local commit after each verified slice (see [Automatic checkpoints](#automatic-checkpoints-one-slice--one-safe-point-to-roll-back-to) above).
+- ✅ **Behavior-spec before code (Step 3b)** — for sensitive slices, Manara writes down the expected behavior *first*, so there's a clear target to build and check against.
+- ✅ **One slice at a time (no bundling)** — Manara works through a single slice end-to-end before starting the next, instead of lumping several changes together.
+
+**Next:**
+
+- A smarter decision engine (when to research vs. prototype vs. refactor).
+- A **decision/report engine** — it reads your project docs and requirements, picks the best approach for the job, and hands you a short report that lays out its suggestions *and the reasoning*: how big the work is (scope), what the field is moving toward (trend), and what counts as the modern way to do it.
+- **Iterate modes** — Manara asks up front how far you want it to go on this run: *plan only*, *plan + start building*, or *go up to a phase you choose* — so you stay in control of how much happens before it checks back in.
+- Optional semi-automatic and fully-automatic modes, review checkpoints, a proper on/off adapter for Spec Kit, and the ability to generate a missing tool on the spot.
 
 **v3** — real long-term project memory (your product, design system, users, competitors, architecture), awareness across multiple projects, coordinating several terminals at once, handoffs between sessions, ready-made templates per project type (SaaS, browser extension, mobile, API), and the option to delegate work to other coding agents — with the quality checks still running on whatever they produce.
 
