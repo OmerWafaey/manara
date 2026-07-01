@@ -147,6 +147,7 @@ The core is still **v1**, intentionally small and careful (v2 is adding capabili
 - ✅ **Behavior-spec before code (Step 3b)** — for sensitive slices, Manara writes down the expected behavior *first*, so there's a clear target to build and check against.
 - ✅ **One slice at a time (no bundling)** — Manara works through a single slice end-to-end before starting the next, instead of lumping several changes together.
 - ✅ **UX verification checklist (Step 5a)** — after a UI slice, Manara presents a short, slice-specific list of things to eyeball in the browser before you verify and commit. Guides review; never replaces it.
+- ✅ **Codex delegate (Step 4b)** — when a slice is genuinely stuck, Manara can hand it to Codex via the official `/codex:rescue` command (asking first, never silently). The guards still run on whatever Codex produces, and a hard 5-attempt cap plus stop-the-moment-it's-solved keeps the two agents from looping forever.
 
 **Next:**
 

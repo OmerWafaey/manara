@@ -65,9 +65,13 @@ These collisions are resolved deliberately so Manara never double-fires:
 These powerful skills are installed but belong to later versions. v1 may **detect and suggest**
 them, but must **not** call them:
 
+> **Enabled in v2:** Codex delegation is no longer deferred. Manara delegates a stuck slice via the
+> `codex-plugin-cc` `/codex:rescue` command (SKILL.md Step 4b) — detect-then-ask (no silent install),
+> guards run on Codex's output before acceptance, and a hard 5-attempt anti-loop cap with
+> stop-when-solved. Still current-branch only; no worktree until v3.
+
 | Skill | Belongs to | Why deferred |
 |-------|-----------|--------------|
-| `codex-delegate` | v3 | Delegate implementation to Codex; guards must still run on its output before acceptance. Not in v1. |
 | `superpowers:using-git-worktrees` | v3 | One terminal = one worktree = one claimed issue. v1 is single-terminal only. |
 | `superpowers:dispatching-parallel-agents` | v3 | Multi-agent parallelism. v1 is manual, single-track. |
 | `skill-creator` | v2 | Auto-generate a missing skill. v1 only detects/suggests a gap; never auto-generates. |
