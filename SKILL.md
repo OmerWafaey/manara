@@ -228,8 +228,9 @@ a problem → delegates again → **forever**, the two circling each other and d
 (the Codex plugin's own docs warn its review-gate can create a long-running loop). So delegation is
 allowed here, but it **must** have a hard stop and its output **must** still pass the gates.
 
-Manara **orchestrates the existing `codex-plugin-cc`** (`/codex:rescue`) — it does **not**
-reimplement delegation.
+Manara **orchestrates the existing `codex-plugin-cc`** — it does **not** reimplement delegation.
+It escalates **cheap → expensive**: read-only `/codex:adversarial-review` first, only then the
+work-doing `/codex:rescue`. Spend the cheap resource before the expensive one.
 
 **Detect first (mirrors the Spec Kit detect / skip / tell pattern):**
 - Check whether the Codex plugin/CLI is available. If it is **not**, tell the user how to install it
@@ -241,9 +242,20 @@ reimplement delegation.
 - **Manara proposes** it when a slice is genuinely stuck (repeated failures / a loop it can't break)
   → surface the suggestion **with the reason** and wait for the user's OK before delegating.
 
-**How to delegate:** invoke `/codex:rescue <clear task description>` — state the task plainly so
-Codex has the context it needs. (`--background`/`--wait`/`--resume`/`--model`/`--effort` exist on
-the command if useful; delegation stays on the **current branch** — no worktree in this slice.)
+**How to delegate — escalate cheap → expensive (two stages):**
+
+*Stage 1 — `/codex:adversarial-review` (read-only, cheap, up to 3 rounds, NOT counted).* Ask Codex
+to critique the stuck code / diagnose why it's failing. It doesn't edit files — Manara reads the
+critique and attempts the fix itself. Run up to **3 review rounds**; these do **not** count toward
+the rescue cap. If a review + Manara's own fix solves it (guards pass, build clean, user verifies),
+**stop here** — never escalate to rescue. State each round ("adversarial-review round 2 of 3,
+uncounted").
+
+*Stage 2 — `/codex:rescue <clear task description>` (Codex does the work, expensive, counted).* Only
+after the cheap reviews are exhausted (or clearly won't get there), hand the task to Codex to fix.
+State the task plainly so Codex has the context it needs. This is the stage the **hard cap** counts.
+(`--background`/`--wait`/`--resume`/`--model`/`--effort` exist on the command if useful; delegation
+stays on the **current branch** — no worktree in this slice.)
 
 **Guards on Codex's output — it gets NO free pass:**
 Codex executing the work never bypasses the gates. Treat its result exactly like any other work:
@@ -256,34 +268,39 @@ Codex executing the work never bypasses the gates. Treat its result exactly like
 
 **The anti-loop stop — two independent conditions, whichever hits first ends the loop:**
 
-1. **STOP IMMEDIATELY when solved (this has priority over everything).** The moment the guards pass
-   AND typecheck/build are clean AND the user verifies, the problem is solved → **stop delegating at
-   once.** Do not keep going toward the cap. Solving on attempt 1 means stop at attempt 1.
+1. **STOP IMMEDIATELY when solved (this has priority over everything, at any stage).** The moment the
+   guards pass AND typecheck/build are clean AND the user verifies, the problem is solved → **stop at
+   once.** This wins during Stage 1 too: if a cheap adversarial-review round gets it fixed, stop
+   there and never escalate to rescue. Solving on the first rescue means stop at the first rescue.
 
-2. **HARD CAP — 5 delegation attempts total for a single slice.** If it is *not* solved, Manara may
-   re-delegate, but never beyond 5 attempts. **State and count each attempt out loud**
-   ("delegation attempt 2 of 5"). If attempt 5 still hasn't produced a guard-passing, user-verified
-   result → **STOP and hand back to the user** with a clear summary ("Delegated to Codex 5 times;
-   still failing on X — here's what was tried; this needs your decision"). Never silently loop past
-   the cap. The cap is a **ceiling, not a target** — condition 1 always wins first; every attempt
-   costs Codex time and usage limits, so prefer the fewest attempts that solve it.
+2. **HARD CAP — 3 `/codex:rescue` attempts for a single slice** (Stage-2 only; Stage-1 reviews are
+   uncounted and never trigger the cap). If it is *not* solved, Manara may re-rescue, but never
+   beyond 3 rescues. **State and count each rescue out loud** ("rescue attempt 2 of 3"). If the
+   **3rd** rescue still hasn't produced a guard-passing, user-verified result → **STOP and hand back
+   to the user** with a clear summary ("3 adversarial reviews + 3 Codex rescues; still failing on X —
+   here's what was tried; this needs your decision"). Never silently loop past the cap. The cap is a
+   **ceiling, not a target** — condition 1 always wins first; every rescue costs Codex time and usage
+   limits, so prefer the fewest that solve it.
 
-**Attempt counting (minimal — existing plumbing, no new script):** track the per-slice count with
-the existing `state.py` — read the current value, increment, and write it back before each attempt:
+**Attempt counting (minimal — existing plumbing, no new script):** track the per-slice **rescue**
+count with the existing `state.py` — read the current value, increment, and write it back before
+each rescue (Stage-2 only; the Stage-1 reviews are not counted toward the cap):
 ```
 py -3 "<SKILL>/scripts/state.py" update --project "<PROJECT_ROOT>" \
-  --set codex_attempts=2 --set last_decision="delegate to Codex (attempt 2 of 5): <why>"
+  --set codex_rescue_attempts=2 --set last_decision="Codex rescue (attempt 2 of 3): <why>"
 ```
-Reset `codex_attempts=0` when a **new** slice starts, so the cap is per-slice.
+Reset `codex_rescue_attempts=0` when a **new** slice starts, so the cap is per-slice.
 
 **Boundaries (keep this slice honest):**
 - Orchestrate the existing `codex-plugin-cc` — don't reimplement delegation.
+- Escalate cheap → expensive: read-only `/codex:adversarial-review` (≤3, uncounted) before
+  `/codex:rescue` (≤3, counted). Don't jump straight to rescue.
 - Detect, then ask — never install the Codex plugin/CLI silently.
-- Never let Codex's output skip the guards, the Step 3b behavior spec (if sensitive), the user
-  verify, or the Step 5b commit.
+- Never let Codex's (or Manara's post-review) output skip the guards, the Step 3b behavior spec (if
+  sensitive), the user verify, or the Step 5b commit.
 - Never delegate silently — always a stated decision with a reason.
-- Never loop past the 5-attempt cap; stop-and-hand-back instead.
-- Always stop the moment it's solved, regardless of attempt count.
+- Never loop past the 3-rescue cap; stop-and-hand-back instead.
+- Always stop the moment it's solved, regardless of stage or attempt count.
 - Current branch only — no branch/worktree management here (that's a later, v3 slice).
 - Don't change Slices 1–4.
 
@@ -432,4 +449,5 @@ for the full list): **using-git-worktrees**, **dispatching-parallel-agents**,
 stub). Manara may *detect and suggest*, but never auto-generate or self-modify in v1.
 
 (Codex delegation is **no longer deferred** — it's enabled in v2 via Step 4b, orchestrating the
-`codex-plugin-cc` `/codex:rescue` command with guards on the output and the 5-attempt anti-loop cap.)
+`codex-plugin-cc` (cheap `/codex:adversarial-review` → `/codex:rescue`) with guards on the output
+and the 3-rescue anti-loop cap.)

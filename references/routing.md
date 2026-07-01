@@ -66,8 +66,9 @@ These powerful skills are installed but belong to later versions. v1 may **detec
 them, but must **not** call them:
 
 > **Enabled in v2:** Codex delegation is no longer deferred. Manara delegates a stuck slice via the
-> `codex-plugin-cc` `/codex:rescue` command (SKILL.md Step 4b) — detect-then-ask (no silent install),
-> guards run on Codex's output before acceptance, and a hard 5-attempt anti-loop cap with
+> `codex-plugin-cc` (SKILL.md Step 4b), escalating cheap→expensive — read-only
+> `/codex:adversarial-review` (≤3, uncounted) before `/codex:rescue` (≤3, counted). Detect-then-ask
+> (no silent install), guards run on the output before acceptance, hard 3-rescue anti-loop cap with
 > stop-when-solved. Still current-branch only; no worktree until v3.
 
 | Skill | Belongs to | Why deferred |
